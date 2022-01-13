@@ -4,8 +4,6 @@ signals.py
 This file contains signal functions to enter into the market.
 """
 from typing import List
-
-
 from one4all.utils import transform_timeframe
 import numpy as np
 import pandas as pd
@@ -47,10 +45,11 @@ def bollinger_bands_series(x, MA_LENGTH=20, SD_DEV=2.0):
     bolu = bolu[~bolu.isna()]
     boll = boll[~boll.isna()]
     tp_ma = tp_ma[~tp_ma.isna()]
+    return pd.Series(boll)
 
-    return pd.DataFrame({'price_SMA': tp_ma,
-                         'BOLL': boll,
-                         'BOLU': bolu})
+    #return pd.DataFrame({'price_SMA': tp_ma,
+    #                     'BOLL': boll,
+    #                     'BOLU': bolu})
 
 
 def bollinger_bands_OHLC(OHLC, TIMEFRAME_LENGTH=60, MA_LENGTH=20, SD_DEV=2.0):
@@ -170,3 +169,11 @@ def RSI(OHLC, MA_LENGTH=14, RSI_LENGTH=14):
 #	sum = 0.0
 #	sum := na(sum[1]) ? ta.sma(src, length) : alpha * src + (1 - alpha) * nz(sum[1])
 #plot(pine_rma(close, 15))
+
+
+class Signal:
+    def __init__(self, OHLC):
+        data = self.OHLC
+
+    def introduce_indicator(self):
+        pass
