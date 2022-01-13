@@ -6,7 +6,26 @@ This file contains utility functions.
 from collections.abc import Mapping, Iterable
 from functools import partial, reduce
 from itertools import product
+import pandas as pd
 import operator
+
+def transform_timeframe(OHLC, TIMEFRAME_LENGTH):
+    """
+    Given a OHLC dataframe with 1 minutes klines, transform_timeframe returns a transformation with aggregate
+    klines (like 15, 30 or 60 minutes).
+    :param OHLC: a pandas dataframe with open, high, low, and close prices. As well, a open_time index
+    :param TIMEFRAME_LENGTH: a float specified the new timeframe conversion required
+    :return: OHLC converted into the timeframe specified
+    """
+    open_price = OHLC['Open'].iloc[[x for x in range(0, OHLC.shape[0], TIMEFRAME_LENGTH)]]
+    close_price = OHLC['Close'].iloc[[x + (TIMEFRAME_LENGTH-1) for x in range(0, OHLC.shape[0], TIMEFRAME_LENGTH)]]
+    high_price = [OHLC.iloc[int(x):int(x + (TIMEFRAME_LENGTH - 1)), OHLC.columns.get_loc('High')].max() for x in range(0, OHLC.shape[0], TIMEFRAME_LENGTH)]
+    low_price = [OHLC.iloc[int(x):int(x + (TIMEFRAME_LENGTH - 1)), OHLC.columns.get_loc('Low')].min() for x in range(0, OHLC.shape[0], TIMEFRAME_LENGTH)]
+    close_price.index = open_price.index
+    return pd.DataFrame({'Open': open_price,
+                         'High': high_price,
+                         'Low': low_price,
+                         'Close': close_price})
 
 
 def spawn_strategy(cls, parameter_grid):

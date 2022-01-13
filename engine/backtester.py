@@ -2,6 +2,7 @@ import pandas as pd
 from one4all.backtesting import run_multiple_strategies
 from one4all.strategy import DCA
 from one4all.utils import ParameterGrid, spawn_strategy
+from one4all.signals import sma
 
 # Cargar datos de prueba
 df = pd.read_csv('sample_data/ETHUSDT_010121_080921.csv',
@@ -9,14 +10,20 @@ df = pd.read_csv('sample_data/ETHUSDT_010121_080921.csv',
 
 
 # Modificar los rangos de fecha
-START_TIMEDATE = '2021-01-01 00:00:00'
-END_TIMEDATE = '2021-01-05 23:59:00'
+START_TIMEDATE = '2021-09-01 23:59:00'
+END_TIMEDATE = '2021-09-07 23:59:00'
 
 OHLC = df[['open', 'high', 'low', 'close', 'volume']]
 OHLC.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
 OHLC.index = df['open_time']
+#OHLC = OHLC.loc[START_TIMEDATE:END_TIMEDATE]
+# SUBSET HOURLY KLINES
 OHLC = OHLC.loc[START_TIMEDATE:END_TIMEDATE]
+print(OHLC)
 
+
+# 00:00, 01:00, 02:00
+# 3459.47; 3527.29; 3520.29
 
 param_grid = {'TP': [.5, ],
               'bo_size': [500],
@@ -30,10 +37,14 @@ param_grid = {'TP': [.5, ],
 
 candidates = [p for p in ParameterGrid(param_grid)]
 
-# What is precisely a DCA objects? Can I use methods associated to this object?
-eval = run_multiple_strategies(spawn_strategy(DCA, candidates), OHLC, signal=[True for x in range(OHLC.shape[0])])
+#print(rma(OHLC['Close']))
+#pd.DataFrame({'Close':OHLC['Close'],
+#              'SMA': sma(OHLC['Close'])}).to_csv('./output_data/sma_14.csv')
 
-print(eval)
+# What is precisely a DCA objects? Can I use methods associated to this object?
+#eval = run_multiple_strategies(spawn_strategy(DCA, candidates), OHLC, signal=[True for x in range(OHLC.shape[0])])
+
+#print(eval)
 
 # Store the results
-eval.to_csv('./output_data/summary_report_30122022.csv')
+#eval.to_csv('./output_data/summary_report_30122022.csv', index_label='Parameters')

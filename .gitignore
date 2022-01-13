@@ -1,2 +1,4 @@
 *idea
 *.pyc
+engine/timeframe_conversor.py
+engine/output_data/summary_report_*+.csv
