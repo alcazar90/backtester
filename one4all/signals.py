@@ -86,28 +86,35 @@ def bollinger_bands_OHLC(OHLC, TIMEFRAME_LENGTH=60, MA_LENGTH=20, SD_DEV=2.0):
                          'BOLL': boll,
                          'BOLU': bolu})
 
+def compute_boll_signal(OHLC, TIMEFRAME_LENGTH):
+    """
 
-def boll_signal(OHLC, boll, boll_index):
+    :param OHLC: kline information in minutes with open, high, low and close prices
+    :param TIMEFRAME_LENGTH: the length for aggregate klines before computing the signal
+    :return: a signal list with the same length that the number of rows of the given OHLC input
     """
-    Compute the signal using bollinger lower band
-    :param OHLC: kline information with open, high, low and close prices
-    :param boll:
-    :param boll_index:
-    :return: a bool list with the signal for entry to the market
-    """
-    signal: List[bool] = [False for _ in range(OHLC.shape[0])]
+    SIGNAL = [False for x in range(OHLC.shape[0])]
     AUX = False
-    for i in range(len(boll_index)):
+    TRANS = TIMEFRAME_LENGTH
+    OHLC_TRANS = transform_timeframe(OHLC, TIMEFRAME_LENGTH=TRANS)
+    boll = bollinger_bands_series(OHLC_TRANS['Close'])
+    for i in range(len(boll)):
         BOLL = boll[i]
-        CLOSE = OHLC.iloc[boll_index[i]]['Close']
+        CLOSE = OHLC_TRANS.loc[boll.index[i]]['Close']
         if (AUX == False) and (CLOSE < BOLL):
-            # preparar terreno para evaluar re-ingreso
+            # Preparar terreno para evaluar re-ingreso
             AUX = True
         elif AUX and (CLOSE > BOLL):
-            # evaluar re-ingreso
-            signal[boll_index[i]] = True
+            # Evaluar re-ingreso
+            SIGNAL[OHLC.loc[:boll.index[i], :].shape[0] + (TRANS - 1)] = True
             AUX = False
-    return signal
+    SIGNAL_DF = pd.DataFrame({'BB' + str(TRANS): SIGNAL})
+    SIGNAL_DF.index = OHLC.index
+    return SIGNAL_DF
+    #return pd.dataframe({'close': ohlc['close'],
+    #                     'close_30m': ohlc_trans['close'],
+    #                     'boll30': boll,
+    #                     'signal': signal})
 
 def RSI(OHLC, MA_LENGTH=14, RSI_LENGTH=14):
     """

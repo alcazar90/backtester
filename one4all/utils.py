@@ -13,6 +13,10 @@ def transform_timeframe(OHLC, TIMEFRAME_LENGTH):
     """
     Given a OHLC dataframe with 1 minutes klines, transform_timeframe returns a transformation with aggregate
     klines (like 15, 30 or 60 minutes).
+
+    TODO: Crear un assertions cuando no calzen el TIMEFRAME_LENGTH con el numero de klines en el OHLC o algo que
+    arroje un error explicito (HACER UN TEST CASE PARA ESTO)
+
     :param OHLC: a pandas dataframe with open, high, low, and close prices. As well, a open_time index
     :param TIMEFRAME_LENGTH: a float specified the new timeframe conversion required
     :return: OHLC converted into the timeframe specified
