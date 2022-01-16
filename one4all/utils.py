@@ -17,10 +17,13 @@ def transform_timeframe(OHLC, TIMEFRAME_LENGTH):
     TODO: Crear un assertions cuando no calzen el TIMEFRAME_LENGTH con el numero de klines en el OHLC o algo que
     arroje un error explicito (HACER UN TEST CASE PARA ESTO)
 
+
     :param OHLC: a pandas dataframe with open, high, low, and close prices. As well, a open_time index
     :param TIMEFRAME_LENGTH: a float specified the new timeframe conversion required
     :return: OHLC converted into the timeframe specified
     """
+    assert OHLC.shape[0] % TIMEFRAME_LENGTH == 0, "You must transform the timeframes OHLC by a divisor of the number of " \
+                                               "klines "
     open_price = OHLC['Open'].iloc[[x for x in range(0, OHLC.shape[0], TIMEFRAME_LENGTH)]]
     close_price = OHLC['Close'].iloc[[x + (TIMEFRAME_LENGTH-1) for x in range(0, OHLC.shape[0], TIMEFRAME_LENGTH)]]
     high_price = [OHLC.iloc[int(x):int(x + (TIMEFRAME_LENGTH - 1)), OHLC.columns.get_loc('High')].max() for x in range(0, OHLC.shape[0], TIMEFRAME_LENGTH)]
