@@ -1,26 +1,27 @@
+import numpy as np
 import pandas as pd
 from one4all.backtesting import run_multiple_strategies
 from one4all.strategy import DCA
 from one4all.utils import ParameterGrid, spawn_strategy, transform_timeframe
-from one4all.signals import bollinger_bands_series, compute_boll_signal, RSI
+from one4all.signals import bollinger_bands_series, compute_boll_signal, project_signal_to, RSI, bollinger_bands_OHLC
 
 #  1. Load and filter the data
 # ----------------------------------------------------------------------------------------------------------------------
 # Cargar datos de prueba
-df = pd.read_csv('sample_data/ETHUSDT_010121_080921.csv',
+df = pd.read_csv('sample_data/ETHUSDT_011121_150122.csv',
                  parse_dates=['open_time', 'close_time'])
 
 # Modificar los rangos de fecha
-START_TIMEDATE = '2021-09-01 23:00:00'
-END_TIMEDATE = '2021-09-07 23:59:00'
+START_TIMEDATE = '2021-12-15 00:00:00'
+END_TIMEDATE = '2022-01-08 23:59:00'
 
 OHLC = df[['open', 'high', 'low', 'close', 'volume']]
 OHLC.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
 OHLC.index = df['open_time']
-# OHLC = OHLC.loc[START_TIMEDATE:END_TIMEDATE]
-# SUBSET HOURLY KLINES
+
 OHLC = OHLC.loc[START_TIMEDATE:END_TIMEDATE]
-# print(OHLC)
+print('Number of klines in OHLC: ' + str(OHLC.shape[0]))
+#print(OHLC.head())
 
 
 #  2. Define parameter combinations to create the strategy candidates
@@ -40,7 +41,7 @@ candidates = [p for p in ParameterGrid(param_grid)]
 # 3. Create the signal vector
 # ----------------------------------------------------------------------------------------------------------------------
 # 3.1 For ASAPers bots the signal is a constant vector with just True values
-SIGNAL = [True for x in range(OHLC.shape[0])]
+#SIGNAL = [True for x in range(OHLC.shape[0])]
 
 # 3.2 Create a signal using bollinger bands
 
@@ -54,41 +55,89 @@ SIGNAL = [True for x in range(OHLC.shape[0])]
 BB_SERIES = [compute_boll_signal(OHLC, TIMEFRAME_LENGTH=10),
              compute_boll_signal(OHLC, TIMEFRAME_LENGTH=15),
              compute_boll_signal(OHLC, TIMEFRAME_LENGTH=30),
-             compute_boll_signal(OHLC, TIMEFRAME_LENGTH=60)]
+             compute_boll_signal(OHLC, TIMEFRAME_LENGTH=60),
+             compute_boll_signal(OHLC, TIMEFRAME_LENGTH=240)]
 
-# concatena all bollinger band series into one dataframe
+# 3.2.3 Contatenate all bollinger band series into a single dataframe
 SIGNAL_DF = pd.concat(BB_SERIES, axis=1)
-
-# Create the 'SPIKE' column which sum how many signal are activated by row
-# Then, compute 'SPIKE_OR' and indicator column that signal whenever a bollinger signal is True in a timeframe
-# In addition, compute 'SPIKE_AND' and indicator column that tells us when all bollinger signal are True in a timeframe
-SIGNAL_DF['SPIKE'] = SIGNAL_DF.sum(axis=1)
-SIGNAL_DF['SPIKE_OR'] = SIGNAL_DF['SPIKE'] != 0
-SIGNAL_DF['SPIKE_AND'] = SIGNAL_DF['SPIKE'] == 4
-print(SIGNAL_DF)
-
-# Now, make a summary with stats about 'SPIKE_OR' and 'SPIKE_AND' and the whole bollinger dataframe
 print(SIGNAL_DF.sum(axis=0))
 
-# You want to run a backterster using one of the above signals?
-SIGNAL = SIGNAL_DF['SPIKE_OR'].to_list()
+# 3.2.4 Project the signal with higer timeframe to compare with the lower ones
+#SIGNAL_DF['PROJ_BB240'] = project_signal_to(SIGNAL_DF['BB240'], n_min=240)
+#SIGNAL_DF['PROJ_BB60'] = project_signal_to(SIGNAL_DF['BB60'], n_min=60)
+#SIGNAL_DF['PROJ_BB30'] = project_signal_to(SIGNAL_DF['BB30'], n_min=30)
+#SIGNAL_DF['PROJ_BB30'] = project_signal_to(SIGNAL_DF['BB30'], n_min=15)
 
+# 3.2.5 Compute the column 'SPIKE_AND' that look for BB in different timeframes coincide to activate
+#PROJECTED_COLS = [col for col in SIGNAL_DF if col.startswith('PROJ')]
+#SIGNAL_DF['SPIKE_AND30_60'] = SIGNAL_DF['BB30'] * SIGNAL_DF['PROJ_BB60']
+#SIGNAL_DF['SPIKE_AND15_30'] = SIGNAL_DF['BB15'] * SIGNAL_DF['PROJ_BB30']
+#SIGNAL_DF['SPIKE_AND15_60'] = SIGNAL_DF['BB15'] * SIGNAL_DF['PROJ_BB60']
+#SIGNAL_DF['SPIKE_AND10_60'] = SIGNAL_DF['BB10'] * SIGNAL_DF['PROJ_BB60']
+#SIGNAL_DF['SPIKE_AND10_240'] = SIGNAL_DF['BB10'] * SIGNAL_DF['PROJ_BB240']
+
+#print(SIGNAL_DF.loc[SIGNAL_DF['SPIKE_AND10_240'] == True])
+#print(SIGNAL_DF.loc[SIGNAL_DF['BB60'] == True], 'BB60')
+
+#BB15_OHLC=bollinger_bands_OHLC(OHLC, TIMEFRAME_LENGTH=15).loc['2022-01-04 15:00:00':'2022-01-04 17:30:00']
+#TF15=compute_boll_signal(OHLC, TIMEFRAME_LENGTH=15).loc['2022-01-03 15:00:00':'2022-01-03 17:30:00']
+#TF30=compute_boll_signal(OHLC, TIMEFRAME_LENGTH=30).loc['2022-01-03 16:00:00':'2022-01-03 17:30:00']
+#print(compute_boll_signal(OHLC, TIMEFRAME_LENGTH=15))
+
+
+# 3.2.6 Compute the column 'SPIKE_OR' that look for BB signasl with different timeframes
+print(SIGNAL_DF)
+SIGNAL_DF['SPIKE'] = SIGNAL_DF.sum(axis=1)
+#SIGNAL_DF['SPIKE_OR'] = SIGNAL_DF['SPIKE'] > 1
+
+
+
+
+# Note: You want to run a backtester using one of the above signals?
 # Choose SPIKE_OR/SPIKE_AND OR whatever column you want as a SIGNAL vector for the backtester...
+#SIGNAL = SIGNAL_DF['SPIKE_OR'].to_list()
 
 
 # 3.3 Create a signal using just RSI
-# TODO...
+# TODO: create RSI signal and test with differents cases...
+#RSI_WINDOW = 14
+#RSI_CLOSE = RSI(OHLC, RSI_LENGTH=RSI_WINDOW)
+#REV = pd.DataFrame({'Close': OHLC['Close'],
+#                    'RSI' + str(RSI_WINDOW): RSI_CLOSE})
+#print(pd.DataFrame({'Close': OHLC['Close'],
+#              'RSI' + str(RSI_WINDOW): RSI_CLOSE}).iloc[14:20])
 
+# EL RSI se ocupa si es que es mayor o menor que un valor arbitrario definido
+# Por ejemplo, RSI_OBJ = 30, si RSI < RSI_OBJ: compramos
+# RSI > RSJ_OBJ: vendemos
+def RSI_SIGNAL(RSI, RSI_OBJ=70, LOWER_THAN=True):
+    out = [False for _ in range(len(RSI))]
+    AUX = False
+    for i in range(len(out)):
+        out[i] = AUX
+        AUX = False
+        if LOWER_THAN:
+            if RSI[i] < RSI_OBJ:
+                AUX = True
+        else:
+            if RSI[i] > RSI_OBJ:
+                AUX = True
+    out = pd.Series(out)
+    out.index = RSI.index
+    return out
+
+#REV['RSI_SIGNAL'] = RSI_SIGNAL(RSI_CLOSE, RSI_OBJ=80, LOWER_THAN=False)
+#print(REV.iloc[13:30])
+
+#print(RSI_SIGNAL(RSI_CLOSE, RSI_OBJ=80).head(n=16))
 
 # 3.4 Create a signal using bollinger bands and RSI
 # TODO...
 
-
-
 # 4. Run the backtester using multiple strategies
 # ----------------------------------------------------------------------------------------------------------------------
-eval = run_multiple_strategies(spawn_strategy(DCA, candidates), OHLC, signal=SIGNAL)
-print(eval)
+#eval = run_multiple_strategies(spawn_strategy(DCA, candidates), OHLC, signal=SIGNAL)
+#print(eval)
 
 
 # 5. Save the reports with the results

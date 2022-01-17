@@ -83,10 +83,11 @@ def bollinger_bands_OHLC(OHLC, TIMEFRAME_LENGTH=60, MA_LENGTH=20, SD_DEV=2.0):
     tp_ma = tp_ma[~tp_ma.isna()]
 
     return pd.DataFrame({'Close_SMA': tp_ma,
+                         'Close': data['Close'],
                          'BOLL': boll,
                          'BOLU': bolu})
 
-def compute_boll_signal(OHLC, TIMEFRAME_LENGTH):
+def compute_boll_signal(OHLC, TIMEFRAME_LENGTH, MA=20, SD_DEV=2.0):
     """
 
     :param OHLC: kline information in minutes with open, high, low and close prices
@@ -97,7 +98,7 @@ def compute_boll_signal(OHLC, TIMEFRAME_LENGTH):
     AUX = False
     TRANS = TIMEFRAME_LENGTH
     OHLC_TRANS = transform_timeframe(OHLC, TIMEFRAME_LENGTH=TRANS)
-    boll = bollinger_bands_series(OHLC_TRANS['Close'])
+    boll = bollinger_bands_series(OHLC_TRANS['Close'], MA_LENGTH=MA, SD_DEV=SD_DEV)
     for i in range(len(boll)):
         BOLL = boll[i]
         CLOSE = OHLC_TRANS.loc[boll.index[i]]['Close']
@@ -115,6 +116,25 @@ def compute_boll_signal(OHLC, TIMEFRAME_LENGTH):
     #                     'close_30m': ohlc_trans['close'],
     #                     'boll30': boll,
     #                     'signal': signal})
+
+
+def project_signal_to(signal, n_min):
+    """
+    Project True over the following n_min forward, usually the number of minute in which
+    the BB_series was calculated
+
+    :param signal: a bool pd.Series with a signal
+    :param n_min: project signal to n_min forward
+    :return: bool pd.Series with the same length but signal projected n_min
+    """
+    projected_signal = signal.copy()
+    # get the indices in which the signal is true
+    true_indices = np.where(projected_signal)[0]
+    # project the signal during n_min forward
+    for index in true_indices:
+        projected_signal.iloc[index:(index + n_min)] = True
+    return projected_signal
+
 
 def RSI(OHLC, MA_LENGTH=14, RSI_LENGTH=14):
     """
@@ -158,29 +178,3 @@ def RSI(OHLC, MA_LENGTH=14, RSI_LENGTH=14):
     #                     'EMA2': ta.trend.ema_indicator(close_price, window=MA_LENGTH)})
 
 
-# on Pine ta.ema and ta.rma are exactly an exponential moving average the only distinction is that the former used
-# alpha = 2 / (len + 1). On the other hand, the later used as alpha = 1 / len.
-# Implementing the below code for computing the exponential moving average should solve the problem
-#//the same on pine
-#pine_ema(src, length) =>
-#    alpha = 2 / (length + 1)
-#    sum = 0.0
-#    sum := na(sum[1]) ? ta.sma(src, length) : alpha * src + (1 - alpha) * nz(sum[1])
-#plot(pine_ema(close,15))
-
-
-#plot(ta.rma(close, 15))
-#//the same on pine
-#pine_rma(src, length) =>
-#	alpha = 1/length
-#	sum = 0.0
-#	sum := na(sum[1]) ? ta.sma(src, length) : alpha * src + (1 - alpha) * nz(sum[1])
-#plot(pine_rma(close, 15))
-
-
-class Signal:
-    def __init__(self, OHLC):
-        data = self.OHLC
-
-    def introduce_indicator(self):
-        pass
