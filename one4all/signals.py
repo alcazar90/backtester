@@ -171,10 +171,37 @@ def RSI(OHLC, MA_LENGTH=14, RSI_LENGTH=14):
     ema = pd.Series.ewm(close_price, alpha=ALPHA, adjust=False).mean()
     return ta.momentum.rsi(close_price, window=RSI_LENGTH)
 
-    #return pd.DataFrame({
-    #                     'close_price': close_price,
-    #                     'RSI2': ta.momentum.rsi(close_price, window=RSI_LENGTH),
-    #                     'EMA': ema,
-    #                     'EMA2': ta.trend.ema_indicator(close_price, window=MA_LENGTH)})
 
-
+def compute_rsi_signal(OHLC, TIMEFRAME_LENGTH, RSI_LENGTH=14, RSI_OBJ=70, LOWER_THAN=True):
+    """
+    TODO: revisar el numero de NA que se utilizan en la ventana para computar el RSI;
+    Deberian ser eliminados? Deberian quedar como NA? Ver las mismas consecuencias en el calculo de las bollinger
+    cuando el numero de observaciones en menor a la ventana especificada.
+    :param OHLC:
+    :param TIMEFRAME_LENGTH:
+    :param RSI_LENGTH:
+    :param RSI_OBJ:
+    :param LOWER_THAN:
+    :return:
+    """
+    # Se utiliza el largo completo inicial del OHLC independiente de en cuanto se transforma el timestamp
+    SIGNAL = [False for _ in range(OHLC.shape[0])]
+    print(len(SIGNAL))
+    TRANS = TIMEFRAME_LENGTH
+    OHLC_TRANS = transform_timeframe(OHLC, TIMEFRAME_LENGTH=TRANS)
+    rsi_series = RSI(OHLC_TRANS, RSI_LENGTH=RSI_LENGTH)
+    AUX = False
+    for i in range(len(rsi_series)):
+        RSI_I = rsi_series[i]
+        if AUX:
+            SIGNAL[OHLC.loc[:rsi_series.index[i], :].shape[0]] = AUX
+            AUX = False
+        if LOWER_THAN:
+            if RSI_I < RSI_OBJ:
+                AUX = True
+        else:
+            if RSI_I > RSI_OBJ:
+                AUX = True
+    SIGNAL = pd.Series(SIGNAL)
+    SIGNAL.index = OHLC.index
+    return SIGNAL

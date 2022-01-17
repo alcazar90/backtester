@@ -3,7 +3,7 @@ import pandas as pd
 from one4all.backtesting import run_multiple_strategies
 from one4all.strategy import DCA
 from one4all.utils import ParameterGrid, spawn_strategy, transform_timeframe
-from one4all.signals import bollinger_bands_series, compute_boll_signal, project_signal_to, RSI, bollinger_bands_OHLC
+from one4all.signals import bollinger_bands_series, compute_boll_signal, project_signal_to, RSI, bollinger_bands_OHLC, compute_rsi_signal
 
 #  1. Load and filter the data
 # ----------------------------------------------------------------------------------------------------------------------
@@ -12,7 +12,7 @@ df = pd.read_csv('sample_data/ETHUSDT_011121_150122.csv',
                  parse_dates=['open_time', 'close_time'])
 
 # Modificar los rangos de fecha
-START_TIMEDATE = '2021-12-15 00:00:00'
+START_TIMEDATE = '2022-01-01 00:00:00'
 END_TIMEDATE = '2022-01-08 23:59:00'
 
 OHLC = df[['open', 'high', 'low', 'close', 'volume']]
@@ -21,7 +21,7 @@ OHLC.index = df['open_time']
 
 OHLC = OHLC.loc[START_TIMEDATE:END_TIMEDATE]
 print('Number of klines in OHLC: ' + str(OHLC.shape[0]))
-#print(OHLC.head())
+#print(OHLC.tail())
 
 
 #  2. Define parameter combinations to create the strategy candidates
@@ -60,7 +60,7 @@ BB_SERIES = [compute_boll_signal(OHLC, TIMEFRAME_LENGTH=10),
 
 # 3.2.3 Contatenate all bollinger band series into a single dataframe
 SIGNAL_DF = pd.concat(BB_SERIES, axis=1)
-print(SIGNAL_DF.sum(axis=0))
+#print(SIGNAL_DF.sum(axis=0))
 
 # 3.2.4 Project the signal with higer timeframe to compare with the lower ones
 #SIGNAL_DF['PROJ_BB240'] = project_signal_to(SIGNAL_DF['BB240'], n_min=240)
@@ -86,11 +86,9 @@ print(SIGNAL_DF.sum(axis=0))
 
 
 # 3.2.6 Compute the column 'SPIKE_OR' that look for BB signasl with different timeframes
-print(SIGNAL_DF)
-SIGNAL_DF['SPIKE'] = SIGNAL_DF.sum(axis=1)
+#print(SIGNAL_DF)
+#SIGNAL_DF['SPIKE'] = SIGNAL_DF.sum(axis=1)
 #SIGNAL_DF['SPIKE_OR'] = SIGNAL_DF['SPIKE'] > 1
-
-
 
 
 # Note: You want to run a backtester using one of the above signals?
@@ -98,41 +96,14 @@ SIGNAL_DF['SPIKE'] = SIGNAL_DF.sum(axis=1)
 #SIGNAL = SIGNAL_DF['SPIKE_OR'].to_list()
 
 
-# 3.3 Create a signal using just RSI
-# TODO: create RSI signal and test with differents cases...
-#RSI_WINDOW = 14
-#RSI_CLOSE = RSI(OHLC, RSI_LENGTH=RSI_WINDOW)
-#REV = pd.DataFrame({'Close': OHLC['Close'],
-#                    'RSI' + str(RSI_WINDOW): RSI_CLOSE})
-#print(pd.DataFrame({'Close': OHLC['Close'],
-#              'RSI' + str(RSI_WINDOW): RSI_CLOSE}).iloc[14:20])
+# 3.3 Create a RSI signal using the signal function compute_rsi_signal from signal.py
+RSI30_70 = compute_rsi_signal(OHLC, TIMEFRAME_LENGTH=30, RSI_OBJ=70)
 
-# EL RSI se ocupa si es que es mayor o menor que un valor arbitrario definido
-# Por ejemplo, RSI_OBJ = 30, si RSI < RSI_OBJ: compramos
-# RSI > RSJ_OBJ: vendemos
-def RSI_SIGNAL(RSI, RSI_OBJ=70, LOWER_THAN=True):
-    out = [False for _ in range(len(RSI))]
-    AUX = False
-    for i in range(len(out)):
-        out[i] = AUX
-        AUX = False
-        if LOWER_THAN:
-            if RSI[i] < RSI_OBJ:
-                AUX = True
-        else:
-            if RSI[i] > RSI_OBJ:
-                AUX = True
-    out = pd.Series(out)
-    out.index = RSI.index
-    return out
 
-#REV['RSI_SIGNAL'] = RSI_SIGNAL(RSI_CLOSE, RSI_OBJ=80, LOWER_THAN=False)
-#print(REV.iloc[13:30])
+# 3.4 Create a signal using bollinger bands and RSI: add the above rsi as columns in SIGNAL_DF
+SIGNAL_DF['RSI30_70']=RSI30_70
 
-#print(RSI_SIGNAL(RSI_CLOSE, RSI_OBJ=80).head(n=16))
-
-# 3.4 Create a signal using bollinger bands and RSI
-# TODO...
+# 3.4.1 Combine signals using AND or OR
 
 # 4. Run the backtester using multiple strategies
 # ----------------------------------------------------------------------------------------------------------------------
