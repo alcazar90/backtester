@@ -36,7 +36,7 @@ param_grid = {'TP': [.5, ],
               'long': [True],
               'EC': [.0005]}
 
-candidates = [p for p in ParameterGrid(param_grid)]
+#candidates = [p for p in ParameterGrid(param_grid)]
 
 # 3. Create the signal vector
 # ----------------------------------------------------------------------------------------------------------------------
@@ -97,13 +97,21 @@ SIGNAL_DF = pd.concat(BB_SERIES, axis=1)
 
 
 # 3.3 Create a RSI signal using the signal function compute_rsi_signal from signal.py
-RSI30_70 = compute_rsi_signal(OHLC, TIMEFRAME_LENGTH=30, RSI_OBJ=70)
-
+RSI30_50 = compute_rsi_signal(OHLC, TIMEFRAME_LENGTH=30, RSI_OBJ=50)
+RSI60_50 = compute_rsi_signal(OHLC, TIMEFRAME_LENGTH=60, RSI_OBJ=50)
 
 # 3.4 Create a signal using bollinger bands and RSI: add the above rsi as columns in SIGNAL_DF
-SIGNAL_DF['RSI30_70']=RSI30_70
+SIGNAL_DF['RSI30_50'] = RSI30_50
+SIGNAL_DF['RSI60_50'] = RSI60_50
 
-# 3.4.1 Combine signals using AND or OR
+print(SIGNAL_DF.sum(axis=0))
+SIGNAL = SIGNAL_DF['BB10'] * SIGNAL_DF['RSI60_50']
+print(SIGNAL.sum())
+
+
+# 3.4.1 Combine signals using AND or O6
+# NAVI: usando OR BOLL15, BOLL30, BOLL60 + (probar con RSI bajo 50)
+
 
 # 4. Run the backtester using multiple strategies
 # ----------------------------------------------------------------------------------------------------------------------

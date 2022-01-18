@@ -47,7 +47,7 @@ def bollinger_bands_series(x, MA_LENGTH=20, SD_DEV=2.0):
     tp_ma = tp_ma[~tp_ma.isna()]
     return pd.Series(boll)
 
-    #return pd.DataFrame({'price_SMA': tp_ma,
+    # return pd.DataFrame({'price_SMA': tp_ma,
     #                     'BOLL': boll,
     #                     'BOLU': bolu})
 
@@ -87,6 +87,7 @@ def bollinger_bands_OHLC(OHLC, TIMEFRAME_LENGTH=60, MA_LENGTH=20, SD_DEV=2.0):
                          'BOLL': boll,
                          'BOLU': bolu})
 
+
 def compute_boll_signal(OHLC, TIMEFRAME_LENGTH, MA=20, SD_DEV=2.0):
     """
 
@@ -112,7 +113,7 @@ def compute_boll_signal(OHLC, TIMEFRAME_LENGTH, MA=20, SD_DEV=2.0):
     SIGNAL_DF = pd.DataFrame({'BB' + str(TRANS): SIGNAL})
     SIGNAL_DF.index = OHLC.index
     return SIGNAL_DF
-    #return pd.dataframe({'close': ohlc['close'],
+    # return pd.dataframe({'close': ohlc['close'],
     #                     'close_30m': ohlc_trans['close'],
     #                     'boll30': boll,
     #                     'signal': signal})
@@ -157,7 +158,7 @@ def RSI(OHLC, MA_LENGTH=14, RSI_LENGTH=14):
 
     up, down = delta.copy(), delta.copy()
     ALPHA = 2 / (RSI_LENGTH + 1)
-    #ALPHA = 1 / RSI_LENGTH
+    # ALPHA = 1 / RSI_LENGTH
 
     up[up < 0] = 0
     up = pd.Series.ewm(up, alpha=ALPHA, adjust=False).mean()
@@ -194,7 +195,14 @@ def compute_rsi_signal(OHLC, TIMEFRAME_LENGTH, RSI_LENGTH=14, RSI_OBJ=70, LOWER_
     for i in range(len(rsi_series)):
         RSI_I = rsi_series[i]
         if AUX:
-            SIGNAL[OHLC.loc[:rsi_series.index[i], :].shape[0]] = AUX
+            UNTIL = OHLC.loc[:rsi_series.index[i], :].shape[0] - 1
+            FROM = UNTIL - TRANS
+            #FROM = OHLC.loc[:rsi_series.index[i], :].shape[0] - 1
+            #UNTIL = FROM + TRANS + 1
+            if UNTIL > OHLC.shape[0]:
+                UNTIL = OHLC.shape[0]
+            # SIGNAL[OHLC.loc[:rsi_series.index[i], :].shape[0]] = AUX
+            SIGNAL[FROM:UNTIL] = [True for _ in range(UNTIL - FROM)]
             AUX = False
         if LOWER_THAN:
             if RSI_I < RSI_OBJ:
