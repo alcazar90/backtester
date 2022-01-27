@@ -2,6 +2,15 @@
 backtesting.py
 
 This file contains the classes that create the backtesting engine.
+
+NOTA:!!
+
+Se desactivo el registro del best_try para correr mas rapido las estrategias, leer lo siiguiente con atencion.
+
+Para desactivar seguir el best_try (ojala por eficiencia), comentar las siguientes lineas de codigo:
+ - strategy.py, linea 69, 76, 85 y 110
+ - backtesting.py, lineas 69-73
+
 """
 from collections.abc import Mapping, Sequence, Iterable
 from datetime import datetime
@@ -40,7 +49,7 @@ def create_safe_order(so_qty, price, date, size_1st_so=12, so_vol_scale=2, so_st
     order_size = [size_1st_so * aux * so_vol_scale ** x for x in range(so_qty)]
     mult_factor = list(accumulate([1 + (so_step * -aux / 100 * so_step_scale ** x) for x in range(so_qty)],
                                   lambda x, y: x * y))
-    trigger_price = [round(price * factor, 2) for factor in mult_factor]
+    trigger_price = [round(price * factor, 7) for factor in mult_factor]
     so_info = list(zip(order_size, trigger_price))
     return [Order(so[0], so[1], date) for so in so_info]
 
@@ -55,22 +64,23 @@ class Position:
         self.TP_price = 0
         self.drawdown = {'price': 0,
                          'date': None,
-                         'pct': 0}
+                         'pct': '',
+                         'pct_float': 0}
 
     def new_entry(self, size, price, date, TP):
         """Gives size and price"""
         # assert self.closed == False, 'Position closed'
         self.order_list.append(Order(size, price, date))
         self.weighted_price = (self.pos * self.weighted_price + size * price) / (self.pos + size)
-        self.TP_price = round(self.weighted_price * (1 + TP / 100), 2)
+        self.TP_price = round(self.weighted_price * (1 + TP / 100), 7)
         self.pos += size
         if len(self.order_list) == 1:
             self.drawdown['price'] = self.weighted_price
-        if len(self.order_list) == 1:
-            self.order_list[-1].best_try['price'] = self.weighted_price
-            self.order_list[-1].best_try['price_index'] = \
-                round((self.order_list[-1].best_try['price'] - self.order_list[-1].price) / (
-                        self.TP_price - self.order_list[-1].price), 2)
+        # if len(self.order_list) == 1:
+        #    self.order_list[-1].best_try['price'] = self.weighted_price
+        #    self.order_list[-1].best_try['price_index'] = \
+        #        round((self.order_list[-1].best_try['price'] - self.order_list[-1].price) / (
+        #                self.TP_price - self.order_list[-1].price), 7)
 
     def close_entry(self, price, date):
         """Close all position creating a new order"""
@@ -117,7 +127,7 @@ class Position:
             self.order_list[-1].best_try['price'] = update_price
             # compute price index using last entry price and TP_price
             self.order_list[-1].best_try['price_index'] = \
-                round((update_price - self.order_list[-1].price) / (self.TP_price - self.order_list[-1].price), 2)
+                round((update_price - self.order_list[-1].price) / (self.TP_price - self.order_list[-1].price), 7)
             # record the date
             self.order_list[-1].best_try['date'] = last_OLHC.name  # pd.df index -> pd.series is name
 
@@ -132,17 +142,21 @@ class Position:
         if self.drawdown['price'] > last_OLHC['Low']:
             self.drawdown['price'] = last_OLHC['Low']
             self.drawdown['date'] = last_OLHC.name  # pd.df index -> pd.series name
-            self.drawdown['pct'] = ''.join([str(round((self.drawdown['price'] / self.order_list[0].price - 1) * 100, 2)), '%'])
+            self.drawdown['pct'] = ''.join(
+                [str(round((self.drawdown['price'] / self.order_list[0].price - 1) * 100, 2)), '%'])
+            self.drawdown['pct_float'] = self.drawdown['price'] / self.order_list[0].price - 1
 
     def highest_high(self, last_OLHC):
         # drawdown for short strategies
         if self.drawdown['price'] < last_OLHC['High']:
             self.drawdown['price'] = last_OLHC['High']
             self.drawdown['date'] = last_OLHC.name  # pd.df index -> pd.series name
-            self.drawdown['pct'] = ''.join([str(round((self.drawdown['price'] / self.order_list[0].price - 1) * 100, 2)), '%'])
+            self.drawdown['pct'] = ''.join(
+                [str(round((self.drawdown['price'] / self.order_list[0].price - 1) * 100, 2)), '%'])
+            self.drawdown['pct_float'] = self.drawdown['price'] / self.order_list[0].price - 1
 
 
-def backtesting(strategy, OHLC, signal):
+def backtesting(strategy, OHLC, signal, DRAWDOWN_TOLERANCE):
     """
     :param strategy:
     :param OHLC: a dataframe with open, high, low, close price information
@@ -151,11 +165,14 @@ def backtesting(strategy, OHLC, signal):
     """
     NROW = OHLC.shape[0]
     for i in range(NROW):
+        # agregar linea con tolerancia de max drawdown para parar estrategia de manera temprana
         strategy.next(OHLC.iloc[0:(i + 1), :], signal[i])
+        if strategy.strategy_pos[-1].drawdown.pct_float < DRAWDOWN_TOLERANCE:
+            break
     return strategy.strategy_pos
 
 
-def eval_strategies(strategy_dic, OHLC, signal):
+def eval_strategies(strategy_dic, OHLC, signal, DRAWDOWN_TOLERANCE):
     """
     Run backtesting over different strategies and collect the report.
     :param strategy_dic:
@@ -166,19 +183,20 @@ def eval_strategies(strategy_dic, OHLC, signal):
     output = {key: [] for key in strategy_dic.keys()}
     N = 1
     for s in strategy_dic.keys():
-        back_result = backtesting(strategy_dic[s], OHLC, signal)
+        back_result = backtesting(strategy_dic[s], OHLC, signal, DRAWDOWN_TOLERANCE)
         output[s] += back_result
-        if N % 2 == 0: print('Progress:', round(N / len(strategy_dic), 2))
+        if N % 2 == 0: print('Progress:', round(N / len(strategy_dic), 4) * 100)
         N += 1
     return output
 
 
-def run_multiple_strategies(strategy_dic, OHLC, signal):
+def run_multiple_strategies(strategy_dic, OHLC, signal, DRAWDOWN_TOLERANCE=-0.35):
     C = random.choice(list(strategy_dic.values()))
-    info_by_strategy = eval_strategies(strategy_dic, OHLC, signal)
-    #results = []
-    results = [summary_strategy(make_report(deals), MIN_CAPITAL= strategy_dic[name].compute_min_capital()) for name, deals in info_by_strategy.items()]
-    #for name, deals in info_by_strategy.items():
+    info_by_strategy = eval_strategies(strategy_dic, OHLC, signal, DRAWDOWN_TOLERANCE)
+    # results = []
+    results = [summary_strategy(make_report(deals), MIN_CAPITAL=strategy_dic[name].compute_min_capital()) for
+               name, deals in info_by_strategy.items()]
+    # for name, deals in info_by_strategy.items():
     #    results.append(summary_strategy(make_report(deals), MIN_CAPITAL=strategy_dic[name].compute_min_capital))
     results = pd.concat(results, axis=1)
     results.columns = [name for name in info_by_strategy.keys()]
