@@ -64,7 +64,7 @@ class Position:
         self.TP_price = 0
         self.drawdown = {'price': 0,
                          'date': None,
-                         'pct': '',
+                         'pct': 0,
                          'pct_float': 0}
 
     def new_entry(self, size, price, date, TP):
@@ -167,8 +167,11 @@ def backtesting(strategy, OHLC, signal, DRAWDOWN_TOLERANCE):
     for i in range(NROW):
         # agregar linea con tolerancia de max drawdown para parar estrategia de manera temprana
         strategy.next(OHLC.iloc[0:(i + 1), :], signal[i])
-        if strategy.strategy_pos[-1].drawdown.pct_float < DRAWDOWN_TOLERANCE:
-            break
+        if len(strategy.strategy_pos) != 0:
+            if strategy.strategy_pos[-1].drawdown['pct_float'] < DRAWDOWN_TOLERANCE:
+                print('early stop')
+                print(strategy.strategy_pos[-1].drawdown)
+                break
     return strategy.strategy_pos
 
 
