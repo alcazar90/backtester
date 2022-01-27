@@ -12,8 +12,8 @@ df = pd.read_csv('sample_data/ETHUSDT_011121_150122.csv',
                  parse_dates=['open_time', 'close_time'])
 
 # Modificar los rangos de fecha
-START_TIMEDATE = '2022-01-01 00:00:00'
-END_TIMEDATE = '2022-01-08 23:59:00'
+START_TIMEDATE = '2021-01-08 00:27:00'
+END_TIMEDATE = '2022-01-08 21:59:00'
 
 OHLC = df[['open', 'high', 'low', 'close', 'volume']]
 OHLC.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
